@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../back_end/runner/run_in_terminal.dart';
 import '../theme_manager/gtk_to_theme.dart';
 import 'package:process_run/process_run.dart';
 
@@ -107,21 +108,21 @@ class _AtPlusPreviewState extends State<AtPlusPreview> {
                             conkyfile.writeAsString(s);
                           }
                         }
-                        Shell(throwOnError: false).run("""bash -c 'cd ${SystemInfo.home}/AT/UID${PThemes.themeMap.keys.elementAt(i)} && ${PThemes.themeMap.values.elementAt(i)["apply"]}'""");
+                        Shell(throwOnError: false, verbose: false).run("""bash -c 'cd ${SystemInfo.home}/AT/UID${PThemes.themeMap.keys.elementAt(i)} && ${PThemes.themeMap.values.elementAt(i)["apply"]}'""");
                         if(PThemes.themeMap.keys.elementAt(i)==6){
                           ThemeDt().setWallpaper("${SystemInfo.home}/AT/UID6/w1.jpg");
                           await Future.delayed(3.seconds);
-                          Shell().run("bash -c 'cp -r ~/.themes/Evergreen-GTK-AT/gtk-4.0 ~/.config'");
+                          runInBash("cp -r ~/.themes/Evergreen-GTK-AT/gtk-4.0 ~/.config");
 
                         }else if(PThemes.themeMap.keys.elementAt(i)==7){
                           ThemeDt().setWallpaper("${SystemInfo.home}/AT/UID7/wallpaper/w1.png");
                           await Future.delayed(3.seconds);
-                          Shell().run("bash -c 'cp -r ~/.themes/Gruvbox-Dark/gtk-4.0 ~/.config'");
+                          runInBash("cp -r ~/.themes/Gruvbox-Dark/gtk-4.0 ~/.config");
 
                         }else if(PThemes.themeMap.keys.elementAt(i)==8){
                           ThemeDt().setWallpaper("${SystemInfo.home}/AT/UID8/wallpaper/w1.png");
                           await Future.delayed(3.seconds);
-                          Shell().run("bash -c 'cp -r ~/.themes/Evergreen-Mac/gtk-4.0 ~/.config'");
+                          runInBash("cp -r ~/.themes/Evergreen-Mac/gtk-4.0 ~/.config");
 
                         }
                       }  catch (e) {

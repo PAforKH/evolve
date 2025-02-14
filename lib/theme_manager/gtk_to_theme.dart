@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../back_end/gtk_theme_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:process_run/process_run.dart';
+import '../back_end/runner/run_in_terminal.dart';
 import 'gtk_widgets.dart';
 import 'image_resizer.dart';
 
@@ -75,11 +76,8 @@ class ThemeDt {
   //Getters - Get and populate Lists or set values accordingly
   Future<String> getGTKThemePath() async {
     //returns the GTK theme name currently in use
-    var sh = Shell();
-    String s = """
-    gsettings get org.gnome.desktop.interface gtk-theme
-""";
-    String ThemeName = (await sh.run(s)).outText;
+    String s = "gsettings get org.gnome.desktop.interface gtk-theme";
+    String ThemeName = (await runInBash(s));
     ThemeName = ThemeName.replaceAll("'", "");
     Directory d = Directory("/usr/share/themes/$ThemeName");
     if(await d.exists()==false){
@@ -92,21 +90,15 @@ class ThemeDt {
   }
   Future<String> getShellThemeName() async {
     //returns the GTK theme name currently in use
-    var sh = Shell();
-    String s = """
- dconf read /org/gnome/shell/extensions/user-theme/name
-""";
-    String ThemeName = (await sh.run(s)).outText;
+    String s = "dconf read /org/gnome/shell/extensions/user-theme/name";
+    String ThemeName = (await runInBash(s));
     ThemeName = ThemeName.replaceAll("'", "");
     return ThemeName;
   }
   Future<String> getIconThemeName() async {
     //returns the GTK theme name currently in use
-    var sh = Shell();
-    String s = """
-gsettings get org.gnome.desktop.interface icon-theme
-""";
-    String IconName = (await sh.run(s)).outText;
+    String s = "gsettings get org.gnome.desktop.interface icon-theme";
+    String IconName = (await runInBash(s));
     IconName = IconName.replaceAll("'", "");
     return IconName;
   }
@@ -163,9 +155,8 @@ gsettings get org.gnome.desktop.interface icon-theme
   static setGTK3(String name) async{
     if(name =="default")name="Adwaita";
     try {
-      await Shell().run("""
-gsettings set org.gnome.desktop.interface gtk-theme $name
-  """);
+      await runInBash("""
+gsettings set org.gnome.desktop.interface gtk-theme $name""");
       ThemeDt.GTK3=name;
       await ThemeDt().setTheme(respectSystem: false);
     }catch (e) {
@@ -180,7 +171,7 @@ gsettings set org.gnome.desktop.interface gtk-theme $name
       }
       if(pathToTheme=="default")return;
 
-      await Shell().run("""
+      await runInBash("""
       cp -r $pathToTheme/gtk-4.0 ${SystemInfo.home}/.config
       """);
       File fl = File("${SystemInfo.home}/.config/gtk-4.0/theme-info.json");
@@ -206,7 +197,7 @@ gsettings set org.gnome.desktop.interface gtk-theme $name
       }
       if(pathToTheme=="default")return;
 
-      await Shell().run("""
+      await runInBash("""
       cp -r $pathToTheme/gtk-4.0 $home/.config
       """);
       File fl = File("$home/.config/gtk-4.0/theme-info.json");
@@ -231,7 +222,7 @@ gsettings set org.gnome.desktop.interface gtk-theme $name
 "'$name'"
 """;
     try {
-      await Shell().run("""dconf write /org/gnome/shell/extensions/user-theme/name $name""");
+      await runInBash("""dconf write /org/gnome/shell/extensions/user-theme/name $name""");
       ShellName=Name;
     }catch (e) {
         print(e);
@@ -256,7 +247,7 @@ gsettings set org.gnome.desktop.interface gtk-theme $name
     String s = """
 gsettings set org.gnome.desktop.interface icon-theme "$packName"
 """;
-    Shell().run(s);
+    runInBash(s);
   }
 
   //Get colours from applied GTK Theme to set app theme.
@@ -481,15 +472,12 @@ gsettings set org.gnome.desktop.interface icon-theme "$packName"
     generateTheme();
   }
 listResFile(String resFilePath) async {
-    String res = (await Shell().run("""gresource list $resFilePath""")).outText;
+    String res = (await runInBash("""gresource list $resFilePath"""));
     List str = res.split('\n');
     return str;
 }
    static extractResToFile({required String resLoc, required String resFileLoc}) async{
-    String finalPath = resFileLoc.substring(0,resFileLoc.lastIndexOf("/"),);
-String cmd = "gresource extract /home/arcnations/.themes/Yaru/gtk-3.0/gtk.gresource /com/ubuntu/themes/Yaru/3.0/gtk-dark.css >/home/arcnations/.themes/Yaru/gtk-3.0/theme.css";
 
-//await Shell().run(cmd);
      final result = await Process.run(
        'gresource',
        ['extract', resFileLoc, resLoc,],
@@ -497,14 +485,21 @@ String cmd = "gresource extract /home/arcnations/.themes/Yaru/gtk-3.0/gtk.gresou
      return result.stdout;
   }
 static String oldWallpaper="";
+  static String currentWallpaper="";
+  getWallpaperPath() async{
+    currentWallpaper= (await runInBash("gsettings get org.gnome.desktop.background picture-uri")).replaceAll("file://", "").replaceAll("'", "");
+    print(await runInBash("gsettings get org.gnome.desktop.background picture-uri"));
+    return currentWallpaper;
+  }
   Future<void> setWallpaper(String s) async{
     oldWallpaper=WidsManager.wallPath;
     if(await File("${SystemInfo.home}/.NexData/compressed/img.jpg").exists()){
      await File("${SystemInfo.home}/.NexData/compressed/img.jpg").delete();
     }
+    currentWallpaper=s;
     compute(ImageResizer.reduceImageSizeAndQuality,"$s:${SystemInfo.home}");
-   await Shell().run("""gsettings set org.gnome.desktop.background picture-uri 'file://$s'""");
-   await Shell(throwOnError: false).run("""gsettings set org.gnome.desktop.background picture-uri-dark 'file://$s'""");
+   await Shell(throwOnError: false,verbose: false).run("""gsettings set org.gnome.desktop.background picture-uri 'file://$s'""");
+   await Shell(throwOnError: false, verbose: false).run("""gsettings set org.gnome.desktop.background picture-uri-dark 'file://$s'""");
   }
 
    Future<void> setFlatpakTheme(String globalAppliedTheme, BuildContext context) async {
@@ -539,10 +534,12 @@ class SystemInfo{
   Future<void> getHome() async {
     home = ((await getApplicationDocumentsDirectory()).parent.path)
         .replaceAll("'", "");
+    await  ThemeDt().getWallpaperPath();
+
   }
   Future<void> getShellVersion() async{
    try {
-     shellVers = (await Shell().run("gnome-shell --version")).outText;
+     shellVers = (await runInBash("gnome-shell --version"));
    }catch (e) {
      WidsManager().notify(null,head: "ERROR!", message: "Can't determine Shell Version. Some features won't work properly.");
    }
@@ -555,7 +552,6 @@ class SystemInfo{
   }
   Future<int> isTheme(String path)async{
 
-    int i =0;
     int j =0;
     //TODO gtk 3.x/4.x support
     List<String>checkListIco=["apps","actions","categories","16x16","22x22", "24x24","64x64","128x128","index.theme", "animation", "panel", "symbolic"];

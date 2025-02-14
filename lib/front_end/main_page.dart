@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../back_end/app_data.dart';
+import '../back_end/runner/run_in_terminal.dart';
 import '../front_end/app_specific_settings.dart';
-import 'package:process_run/process_run.dart';
 import '../theme_manager/gtk_to_theme.dart';
 import '../theme_manager/gtk_widgets.dart';
 import 'about_page.dart';
@@ -43,9 +43,8 @@ class _WidgetGTKState extends State<WidgetGTK> with TickerProviderStateMixin {
   bool minButton = false;
   bool maxButton = false;
   setLaunch() async {
-    String s1 = (await Shell().run(
-            "gsettings get org.gnome.desktop.wm.preferences button-layout"))
-        .outText;
+    String s1 = (await runInBash(
+            "gsettings get org.gnome.desktop.wm.preferences button-layout"));
     winLeft = s1.replaceAll("'", "").endsWith("icon") ? true : false;
     minButton = s1.contains("minimize") ? true : false;
     maxButton = s1.contains("maximize") ? true : false;

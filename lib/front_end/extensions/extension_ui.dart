@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../back_end/app_data.dart';
 import '../../back_end/gtk_theme_manager.dart';
+import '../../back_end/runner/run_in_terminal.dart';
 import '../../theme_manager/gtk_widgets.dart';
 import '../../theme_manager/tab_manage.dart';
-import 'package:process_run/process_run.dart';
 
 import '../../theme_manager/gtk_to_theme.dart';
 
@@ -37,11 +37,11 @@ class _ExtensionUiState extends State<ExtensionUi> {
     TabManager.freeze = true;
     widget.state();
     try {
-      String s = (await Shell().run("gnome-extensions list")).outText;
+      String s = (await runInBash("gnome-extensions list"));
       List l = s.split('\n');
       for (int i = 0; i < l.length; i++) {
         String info =
-            (await Shell().run("gnome-extensions info ${l[i]}")).outText;
+            (await runInBash("gnome-extensions info ${l[i]}"));
         exts.addAll({l[i]: getMap(info)});
         setState(() {});
       }
@@ -212,7 +212,7 @@ class _ExtensionUiState extends State<ExtensionUi> {
                                 GetButtons(
                                   onTap: () async {
                                     Navigator.pop(context);
-                                    await Shell().run(
+                                    await runInBash(
                                         "gnome-extensions uninstall ${exts.keys.elementAt(i)}");
                                     populate();
                                   },
@@ -311,7 +311,7 @@ class _ExtensionUiState extends State<ExtensionUi> {
                                           !exts[exts.keys.elementAt(i)]
                                               ["enable"];
                                     });
-                                    Shell().run(
+                                    runInBash(
                                         "gnome-extensions ${exts[exts.keys.elementAtOrNull(i)]["enable"] ? "enable" : "disable"} ${exts.keys.elementAt(i)}");
                                   }),
                             )
@@ -352,8 +352,7 @@ class _ExtensionInfoPageState extends State<ExtensionInfoPage> {
   fetchMapFromList() async {
     try {
       Map jsonInfo;
-      String h = (await Shell().run("gnome-shell --version"))
-          .outText
+      String h = (await runInBash("gnome-shell --version"))
           .replaceAll("GNOME Shell ", "");
       h = h.substring(0, h.lastIndexOf(".")).trim();
       if (widget.jsonInfo == null) {
@@ -361,7 +360,7 @@ class _ExtensionInfoPageState extends State<ExtensionInfoPage> {
             ? Directory("extensions").delete(recursive: true)
             : Directory("extensions").create(recursive: true);
 
-        await Shell().run(
+        await runInBash(
             "wget -O ${SystemInfo.home}/.NexData/cache/search/exts/info.json https://extensions.gnome.org/extension-info/?uuid=${widget.uuid}&shell_version=$h");
         File info =
             File("${SystemInfo.home}/.NexData/cache/search/exts/info.json");
@@ -384,7 +383,7 @@ class _ExtensionInfoPageState extends State<ExtensionInfoPage> {
       } else {
         inst = jsonInfo["shell_version_map"][h]["version"].toString();
       }
-      String pre = (await Shell().run("gnome-extensions list")).outText;
+      String pre = (await runInBash("gnome-extensions list"));
       if (pre.contains(widget.uuid)) {
         installable = "installed";
       } else {
@@ -439,10 +438,6 @@ class _ExtensionInfoPageState extends State<ExtensionInfoPage> {
             )
           : Column(
               children: [
-                if (MediaQuery.sizeOf(context).width > 600)
-                  const SizedBox(
-                    height: 30,
-                  ),
                 AnimatedPadding(
                   padding: EdgeInsets.all(
                       (MediaQuery.sizeOf(context).width < 500) ? 20 : 60),
@@ -536,7 +531,7 @@ class _ExtensionInfoPageState extends State<ExtensionInfoPage> {
                               ),
                               FutureWid(
                                 val: desc,
-                                width: 100,
+                                width: 300,
                                 height: 10,
                                 child: GestureDetector(
                                   onTap: () {
@@ -598,7 +593,7 @@ class _ExtensionInfoPageState extends State<ExtensionInfoPage> {
                                                         installable = null;
                                                       });
                                                       try {
-                                                        await Shell().run(
+                                                        await runInBash(
                                                             "gnome-extensions uninstall ${widget.uuid}");
                                                         setState(() {
                                                           installable =
@@ -624,7 +619,7 @@ class _ExtensionInfoPageState extends State<ExtensionInfoPage> {
                                                 IconButton(
                                                   onPressed: () async {
                                                     try {
-                                                      await Shell().run(
+                                                      await runInBash(
                                                           "gnome-extensions prefs ${widget.uuid}");
                                                     } catch (e) {
                                                       WidsManager().showMessage(

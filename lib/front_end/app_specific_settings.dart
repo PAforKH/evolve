@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../back_end/app_data.dart';
+import '../back_end/runner/run_in_terminal.dart';
 import '../theme_manager/gtk_to_theme.dart';
 import '../theme_manager/gtk_widgets.dart';
 import '../theme_manager/tab_manage.dart';
-import 'package:process_run/process_run.dart';
 
 import '../back_end/windowbehave/appwindow.dart';
 
@@ -33,9 +33,7 @@ class _AppSettingsState extends State<AppSettings> {
   fetchCacheData() async {
     Directory d = Directory("${SystemInfo.home}/.NexData/cache");
     if (d.existsSync()) {
-      String s = (await Shell()
-              .run("du --max-depth=0 ${SystemInfo.home}/.NexData/cache"))
-          .outText;
+      String s = (await runInBash("du --max-depth=0 ${SystemInfo.home}/.NexData/cache"));
       s = s.substring(0, s.indexOf("\t")).trim();
       try {
         cacheDt = double.parse((double.parse(s) / 1000).toString().substring(
@@ -317,9 +315,9 @@ class AppSettingsToggle {
                         context: context,
                       );
                     } else {
-                      String out = (await Shell().run("""
+                      String out = (await runInBash("""
                         which gresource
-                        """)).outText;
+                        """));
                       if (out.contains("no gresource")) {
                         WidsManager().showMessage(
                           title: "Error",
@@ -328,15 +326,15 @@ class AppSettingsToggle {
                         );
                       } else {
                         await dir.create(recursive: true);
-                        await Shell().run(
+                        await runInBash(
                             """cp /usr/share/gnome-shell/gnome-shell-theme.gresource ${dir.path}
                            """);
                         List m = await ThemeDt().listResFile(
                             "${dir.path}/gnome-shell-theme.gresource");
                         for (String name in m) {
                           if (name.contains("gnome-shell-dark")) {
-                            await Shell().run(
-                                """bash -c 'gresource extract ${dir.path}/gnome-shell-theme.gresource $name > ${dir.path}/gnome-shell.css'""");
+                            await runInBash(
+                                """gresource extract ${dir.path}/gnome-shell-theme.gresource $name > ${dir.path}/gnome-shell.css""");
                             break;
                           }
                         }

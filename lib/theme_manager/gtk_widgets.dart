@@ -6,8 +6,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../back_end/app_data.dart';
-import 'package:process_run/process_run.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../back_end/runner/run_in_terminal.dart';
 import 'gtk_to_theme.dart';
 
 //Returns required widgets in style of the applied GTK Theme
@@ -32,7 +32,7 @@ class WidsManager {
 
   notify(context, {String head = "Info", required String message}) async {
     try {
-      await Shell().run(
+      await runInBash(
           "notify-send --app-name=Evolve-Core --icon=${SystemInfo.home}/nex/apps/evolvecore/iconfile.png \"$head\" \"$message\"");
     } catch (E) {
       if (context != null) {
@@ -331,9 +331,7 @@ class WidsManager {
   static String sysFont = "";
   static double? sysFontSize;
   Future<void> loadFontAndApply() async {
-    sysFont = (await Shell()
-            .run("gsettings get org.gnome.desktop.interface font-name"))
-        .outText;
+    sysFont = (await runInBash("gsettings get org.gnome.desktop.interface font-name"));
     await Future.delayed(1.seconds);
     sysFont = sysFont.replaceAll(",", "");
     sysFontSize = double.tryParse(
@@ -502,9 +500,9 @@ class WidsManager {
   Future<Widget> getWallpaperSample({String? wallPath}) async {
     if (File("${SystemInfo.home}/.NexData/compressed/img.jpg").existsSync() ==
         false) {
-      wallPath = (await Shell().run("""
+      wallPath = (await runInBash("""
     gsettings get org.gnome.desktop.background picture-uri
-    """)).outText.replaceAll("file://", "").replaceAll("'", "");
+    """)).replaceAll("file://", "").replaceAll("'", "");
     } else {
       wallPath = "${SystemInfo.home}/.NexData/compressed/img.jpg";
     }
@@ -1115,7 +1113,6 @@ class _GetIconsState extends State<GetIcons> {
   }
 
   initateLocations() async {
-    Directory Ico = Directory(widget.icoPackPath);
     svgPaths[0] = await checkFile("org.gnome.files.svg");
     if (svgPaths[0] == "NotFound") {
       svgPaths[0] = await checkFile("org.gnome.Nautilus.svg");
@@ -1407,9 +1404,9 @@ class _GetTextBoxState extends State<GetTextBox> {
 }
 
 class GetToggleButton extends StatefulWidget {
-  bool value;
+  final bool value;
   final Function onTap;
-  GetToggleButton({required this.value, required this.onTap, super.key});
+  const GetToggleButton({required this.value, required this.onTap, super.key});
 
   @override
   State<GetToggleButton> createState() => _GetToggleButtonState();

@@ -6,9 +6,9 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../back_end/runner/run_in_terminal.dart';
 import '../../theme_manager/gtk_to_theme.dart';
 import '../../theme_manager/gtk_widgets.dart';
-import 'package:process_run/process_run.dart';
 
 import 'extension_ui.dart';
 
@@ -29,9 +29,8 @@ class _ExtsSurfState extends State<ExtsSurf> {
     String vrs = txt.split("{}").last;
     txt = txt.split("{}").first;
     txt = txt.replaceAll(" ", "+");
-    String src = (await Shell().run(
-            "bash -c 'curl \"https://extensions.gnome.org/extension-query/?search=$txt&shell_version=$vrs\"'"))
-        .outText;
+    String src = (await runInBash(
+            "curl \"https://extensions.gnome.org/extension-query/?search=$txt&shell_version=$vrs\""));
     List s = jsonDecode(src)["extensions"];
     for (int i = 0; i < s.length; i++) {
       results[s[i]["uuid"]] = s[i];
@@ -76,8 +75,8 @@ class _ExtsSurfState extends State<ExtsSurf> {
       home = jsonDecode(hm.readAsStringSync());
     } else {
       await hm.create(recursive: true);
-      await Shell().run(
-          "bash -c 'wget -O ${hm.path} \"https://extensions.gnome.org/extension-query/?page=1&shell_version=${SystemInfo.shellVers}\"'");
+      await runInBash(
+          "wget -O ${hm.path} \"https://extensions.gnome.org/extension-query/?page=1&shell_version=${SystemInfo.shellVers}\"");
       home = jsonDecode(hm.readAsStringSync());
     }
     List l = home["extensions"];

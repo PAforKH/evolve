@@ -1,6 +1,10 @@
 BRIEF RELEASE NOTES
 Evolve Core
-(V1.6 - Stable Release)
+(V1.7 - Stable Release)
+    - Themes tab is now more stable and efficient
+    - Cleaner terminal output
+    - All new runInBash Wrapper which handles system commands and outputs.
+    - Bug fixes
     - All new AT+ Themes Section
     - All new GNOME Extensions Store!
     - Widget improvements and UI redesign

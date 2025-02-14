@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../back_end/app_data.dart';
 import '../back_end/gtk_theme_manager.dart';
+import '../back_end/runner/run_in_terminal.dart';
 import '../front_end/at_plus_preview.dart';
-import '../front_end/edit_colours.dart';
 import '../theme_manager/atplus_themes.dart';
 import '../theme_manager/gtk_to_theme.dart';
 import '../theme_manager/gtk_widgets.dart';
@@ -57,7 +57,7 @@ class _AppearancesState extends State<Appearances> {
   List<Color> oldCol = [];
   List<Color> col = [];
   setVals() async {
-    wall = await WidsManager().getWallpaperSample();
+
     await getWallList();
     globalAppliedThemePath = await ThemeDt().getGTKThemePath();
     ThemeDt.isThemeFolderMade = await ThemeManager().populateThemeList();
@@ -75,6 +75,8 @@ class _AppearancesState extends State<Appearances> {
           "Directory listing fails when you have never installed any premium theme pack from AT, Patreon. You may ignore this.");
     }
     ThemeDt.ThemeNamePath = globalAppliedThemePath;
+    cacheMainImage();
+    cacheImages();
     setState(() {
       opacity = 1.0;
     });
@@ -101,9 +103,7 @@ class _AppearancesState extends State<Appearances> {
   bool activeAT = false;
   getWallList({String? path}) async {
     if (path == null) {
-      String wallPath = (await Shell().run("""
-    gsettings get org.gnome.desktop.background picture-uri
-    """)).outText.replaceAll("file://", "").replaceAll("'", "");
+      String wallPath = (await runInBash("gsettings get org.gnome.desktop.background picture-uri")).replaceAll("file://", "").replaceAll("'", "");
       File wl = File(wallPath);
       if (await wl.exists()) {
         wallList = wl.parent.listSync();
@@ -121,7 +121,62 @@ class _AppearancesState extends State<Appearances> {
     }
     wallList = wallLstCopy;
   }
+  var alreadyBGImage;
+  List cachedImages=[];
+  var mainImageCached;
+  var prevImageCached;
+  Future<void> cacheMainImage() async {
+    try {
+      alreadyBGImage=await File("${SystemInfo.home}/.NexData/compressed/img.jpg").readAsBytes();
+      setState(() {
 
+      });
+    }  catch (e) {
+
+    }
+    mainImageCached=  await  _getResizedImage(
+      ThemeDt.currentWallpaper,);
+    prevImageCached=mainImageCached;
+
+  }
+  Future<void> updateMainCache([String? path]) async {
+    prevImageCached=    prevImageCached=await  _getResizedImage(
+      path ?? ThemeDt.currentWallpaper,);
+    setState(() {
+      changingWallpaper=true;
+    });
+
+    try {
+      alreadyBGImage=await File("${SystemInfo.home}/.NexData/compressed/img.jpg").readAsBytes();
+      setState(() {
+
+      });
+    }  catch (e) {
+
+    }
+    mainImageCached=  prevImageCached;
+    setState(() {
+      changingWallpaper=false;
+    });
+    //  await Future.delayed(1.seconds);
+    // prevImageCached=mainImageCached;
+    //setState(() {
+
+    //});
+  }
+  bool changingWallpaper=false;
+  Future<void> cacheImages() async {
+    cachedImages=[];
+    for(FileSystemEntity m in wallList){
+      cachedImages.add(
+          await  _getResizedImage(
+            m.path,
+          )); setState(() {
+
+      });
+    }
+
+  }
   bool largeAlbum = false;
   double opacity = 0.0;
   //ensure smooth transition with controlled opacity
@@ -229,20 +284,59 @@ class _AppearancesState extends State<Appearances> {
                           await FilePicker.platform.pickFiles();
 
                       if (result != null) {
+
                         await ThemeDt().setWallpaper(result.files.single.path!);
-                        wall = await WidsManager().getWallpaperSample();
                         File f = File(result.files.single.path!);
                         await getWallList(path: f.parent.path);
+                        updateMainCache(ThemeDt.currentWallpaper);
+                        cacheImages();
                         widget.state();
                       }
                     },
                     child: AnimatedContainer(
                             duration: ThemeDt.d,
                             curve: ThemeDt.c,
-                            width: (largeAlbum)
-                                ? 100
-                                : MediaQuery.sizeOf(context).width / 3,
-                            child: wall)
+                      width:(largeAlbum)?100: MediaQuery.sizeOf(context).width / 3,
+                      child:ClipRRect(
+                        borderRadius:
+                        BorderRadius
+                            .circular(10),child:  Stack(
+                        children: [
+
+                          if(mainImageCached!=null) Image.memory(
+                            mainImageCached , fit: BoxFit.cover,
+                            height: MediaQuery.sizeOf(context).height,
+                            width: MediaQuery.sizeOf(context).width,
+                          ),
+
+                          if( mainImageCached!=null) Stack(
+                            children: [
+                              Container(
+                                color: Colors.black,
+                                height: 25,
+                              ),
+                              Container(
+                                margin: const EdgeInsets.only(top: 10, left: 10),
+                                decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(100)),
+                                width: 25,
+                                height: 8,
+                              ),
+                              Container(
+                                margin: const EdgeInsets.only(top: 10, left: 40),
+                                decoration: const BoxDecoration(
+                                  color: Colors.grey,
+                                  shape: BoxShape.circle,
+                                ),
+                                width: 8,
+                                height: 8,
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
+                      ),)
                         .animate(
                             effects: [FadeEffect(delay: 100.milliseconds)]),
                   ),
@@ -280,19 +374,7 @@ class _AppearancesState extends State<Appearances> {
                                           children: [
                                             WidsManager().getText("Album",
                                                 fontWeight: ThemeDt.boldText),
-                                            const SizedBox(
-                                              width: 8,
-                                            ),
-                                            GestureDetector(
-                                                onTap: () async {
-                                                  await chooseAlbum();
-                                                },
-                                                child: Icon(
-                                                  Icons.edit,
-                                                  color:
-                                                      ThemeDt.themeColors["fg"],
-                                                  size: 13,
-                                                )),
+
                                             const SizedBox(
                                               width: 10,
                                             ),
@@ -360,44 +442,23 @@ class _AppearancesState extends State<Appearances> {
                                                             .setWallpaper(
                                                                 wallList[index]
                                                                     .path);
-                                                        wall = await WidsManager()
-                                                            .getWallpaperSample();
+                                                        updateMainCache(ThemeDt.currentWallpaper);
                                                         widget.state();
                                                       },
                                                       light: true,
-                                                      child:  RepaintBoundary(
-                                                  child: FutureBuilder<Uint8List>(
-                                                  future: _getResizedImage(
-                                                    wallList[index].path,
-                                                  ),
-                                                  builder: (context, snapshot) {
-                                                  if (snapshot.connectionState == ConnectionState.done) {
-                                                  return ClipRRect(
-                                                  borderRadius:
-                                                  BorderRadius
-                                                      .circular(10),child: Image.memory(snapshot.data!, fit: BoxFit.cover,)).animate(
-                                                  effects: [
-                                                  FadeEffect(
-                                                  duration: 1.seconds
-                                                  ),
-                                                  SaturateEffect(
-                                                    begin: 3,
-                                                    end: 1,
-                                                    duration: 700.milliseconds,
-
-                                                  ),
-                                                  BlurEffect(
-                                                  begin: Offset(10, 10),
-                                                  delay: 200.milliseconds,
-                                                  duration: 3.seconds,
-                                                  curve: Curves.easeOutExpo
-                                                  ),
-                                                  ]
-                                                  );
-                                                  } else {
-                                                  return Container();
-                                                  }
-                                                  },)));}))])
+                                                      child: FutureWid(
+                                                          height: 200,
+                                                          width: 200,
+                                                          val: cachedImages.elementAtOrNull(index),
+                                                          child:cachedImages.elementAtOrNull(index)==null?Container():
+                                                          ClipRRect(
+                                                            borderRadius: BorderRadius.circular(5),
+                                                            child: Image.memory(
+                                                                height: double.infinity,
+                                                                width: double.infinity,
+                                                                fit: BoxFit.cover,
+                                                                cachedImages.elementAt(index)),
+                                                          )));}))])
                                   : MouseRegion(
                                       onEnter: (dt) {
                                         activeAT = true;
@@ -491,7 +552,7 @@ class _AppearancesState extends State<Appearances> {
                                                                       s);
                                                             }
                                                           }
-                                                          Shell(
+                                                          Shell( verbose: false,
                                                                   throwOnError:
                                                                       false)
                                                               .run(
@@ -506,7 +567,7 @@ class _AppearancesState extends State<Appearances> {
                                                             await Future
                                                                 .delayed(
                                                                     3.seconds);
-                                                            Shell().run(
+                                                            runInBash(
                                                                 "bash -c 'cp -r ~/.themes/Evergreen-GTK-AT/gtk-4.0 ~/.config'");
                                                             wall = await WidsManager()
                                                                 .getWallpaperSample();
@@ -521,7 +582,7 @@ class _AppearancesState extends State<Appearances> {
                                                             await Future
                                                                 .delayed(
                                                                     3.seconds);
-                                                            Shell().run(
+                                                            runInBash(
                                                                 "bash -c 'cp -r ~/.themes/Gruvbox-Dark/gtk-4.0 ~/.config'");
                                                             wall = await WidsManager()
                                                                 .getWallpaperSample();
@@ -536,7 +597,7 @@ class _AppearancesState extends State<Appearances> {
                                                             await Future
                                                                 .delayed(
                                                                     3.seconds);
-                                                            Shell().run(
+                                                            runInBash(
                                                                 "bash -c 'cp -r ~/.themes/Evergreen-Mac/gtk-4.0 ~/.config'");
                                                             wall = await WidsManager()
                                                                 .getWallpaperSample();
@@ -1049,44 +1110,12 @@ class _AppearancesState extends State<Appearances> {
                       ];
                     },
                     child: WidsManager().getContainer(
-                        width: (MediaQuery.sizeOf(context).width / 3) +
+                        width: (MediaQuery.sizeOf(context).width / 3 + 50) +
                             (TabManager.isLargeScreen ? 0 : 60),
                         child:
                             WidsManager().getText(ThemeDt.GTK3, maxLines: 1)),
                   ),
-                  const SizedBox(
-                    width: 8,
-                  ),
-                  GetButtons(
-                    onTap: () async {
-                      String fle =
-                          "${SystemInfo.home}/.themes/${ThemeDt.GTK3}/gtk-3.0/${(isDark) ? "gtk-dark.css" : "gtk.css"}";
-                      File fl = File(fle);
-                      if (!(await fl.exists())) {
-                        WidsManager().showMessage(
-                            title: "Error",
-                            message:
-                                "Only locally installed themes can be edited. Please download and install a theme if you don't have any local user themes.",
-                            context: context);
-                        return;
-                      }
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => ChangeColors(
-                                    filePath: fle,
-                                    state: widget.state,
-                                  ))).then((value) async {
-                        widget.state();
-                      });
-                    },
-                    light: true,
-                    child: Icon(
-                      Icons.edit_rounded,
-                      color: ThemeDt.themeColors["fg"],
-                      size: 21,
-                    ),
-                  ),
+
                 ],
               )
             ],
@@ -1147,42 +1176,11 @@ class _AppearancesState extends State<Appearances> {
                         ];
                       },
                       child: WidsManager().getContainer(
-                          width: (MediaQuery.sizeOf(context).width / 3) +
+                          width: (MediaQuery.sizeOf(context).width / 3 + 50) +
                               (TabManager.isLargeScreen ? 0 : 60),
                           child: WidsManager().getText(
                               ThemeDt.GTK4 ?? "Not Applied",
                               maxLines: 1))),
-                  const SizedBox(
-                    width: 10,
-                  ),
-                  GetButtons(
-                    onTap: () async {
-                      String fle =
-                          "${SystemInfo.home}/.themes/${ThemeDt.GTK4}/gtk-4.0/${(isDark) ? "gtk-dark.css" : "gtk.css"}";
-                      File fl = File(fle);
-                      if (!(await fl.exists())) {
-                        WidsManager().showMessage(
-                            title: "Error",
-                            message:
-                                "Only locally installed themes can be edited. Please download and install a theme if you don't have any local user themes.",
-                            context: context);
-                        return;
-                      }
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => ChangeColors(
-                                    filePath: fle,
-                                    state: widget.state,
-                                  )));
-                    },
-                    light: true,
-                    child: Icon(
-                      Icons.edit_rounded,
-                      color: ThemeDt.themeColors["fg"],
-                      size: 21,
-                    ),
-                  ),
                 ],
               )
             ],
@@ -1245,41 +1243,10 @@ class _AppearancesState extends State<Appearances> {
                       ];
                     },
                     child: WidsManager().getContainer(
-                        width: (MediaQuery.sizeOf(context).width / 3) +
+                        width: (MediaQuery.sizeOf(context).width / 3 + 50) +
                             (TabManager.isLargeScreen ? 0 : 60),
                         child: WidsManager()
                             .getText(ThemeDt.ShellName, maxLines: 1)),
-                  ),
-                  const SizedBox(
-                    width: 10,
-                  ),
-                  GetButtons(
-                    onTap: () async {
-                      String fle =
-                          "${SystemInfo.home}/.themes/${ThemeDt.ShellName}/gnome-shell/gnome-shell.css";
-                      File fl = File(fle);
-                      if (!(await fl.exists())) {
-                        WidsManager().showMessage(
-                            title: "Error",
-                            message:
-                                "Only locally installed themes can be edited. Please download and install a theme if you don't have any local user themes.",
-                            context: context);
-                        return;
-                      }
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => ChangeColors(
-                                  filePath: fle,
-                                  state: widget.state,
-                                  update: false)));
-                    },
-                    light: true,
-                    child: Icon(
-                      Icons.edit_rounded,
-                      color: ThemeDt.themeColors["fg"],
-                      size: 21,
-                    ),
                   ),
                 ],
               )
@@ -1308,32 +1275,6 @@ class _AppearancesState extends State<Appearances> {
               ),
             ],
           ),
-          const SizedBox(
-            height: 10,
-          ),
-          Align(
-              alignment: Alignment.bottomRight,
-              child: GetButtons(
-                onTap: () async {
-                  FilePickerResult? result =
-                      await FilePicker.platform.pickFiles();
-
-                  if (result != null) {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => ChangeColors(
-                                  filePath: result.files.single.path!,
-                                  state: widget.state,
-                                  isDefinedFile: true,
-                                  update: false,
-                                )));
-                  }
-                },
-                text: "Open CSS file",
-                light: true,
-                pillShaped: true,
-              ))
         ],
       ),
     );
@@ -1348,7 +1289,8 @@ class _AppearancesState extends State<Appearances> {
       });
       await getWallList(path: selectedDirectory);
       await ThemeDt().setWallpaper(wallList.first.path);
-      wall = await WidsManager().getWallpaperSample();
+      await updateMainCache(ThemeDt.currentWallpaper);
+      cacheImages();
 
       widget.state();
     }

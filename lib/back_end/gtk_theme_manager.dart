@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:evolvecore/back_end/runner/run_in_terminal.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import '../theme_manager/gtk_to_theme.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:process_run/process_run.dart';
 
 class ThemeManager {
   //Class to manage theme and icon list inside the system
@@ -19,7 +19,7 @@ class ThemeManager {
       if(link==null){
         return;
       }else{
-        await Shell().run("wget -O link.file $link");
+        await runInBash("wget -O link.file $link");
         File linkFile = File("./link.file");
         String  fl=linkFile.readAsStringSync();
         int ind1=fl.indexOf("data-uuid=\"");
@@ -29,25 +29,24 @@ class ThemeManager {
       }
     }
     //FETCH VERSION NUM
-    String exts =(await Shell().run("gnome-extensions list")).outText;
+    String exts =(await runInBash("gnome-extensions list"));
     uuid=uuid.replaceAll("'", "").trim();
     if(exts.contains(uuid)){
       return "extension already installed...";
     }
 
     if(!silentInstall){
-    String slret= (await Shell().run("""busctl --user call org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Extensions InstallRemoteExtension s  $uuid""")).outText;
+    String slret= (await runInBash("""busctl --user call org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Extensions InstallRemoteExtension s  $uuid"""));
       return slret;
     }
-    String h =(await Shell().run("gnome-shell --version")).outText.replaceAll("GNOME Shell ", "");
+    String h =(await runInBash("gnome-shell --version")).replaceAll("GNOME Shell ", "");
     h=h.substring(0,h.lastIndexOf(".")).trim();
-    await Shell().run("mkdir extension");
-    await Shell().run("wget -O info.json https://extensions.gnome.org/extension-info/?uuid=$uuid&shell_version=$h");
+    await runInBash("mkdir extension");
+    await runInBash("wget -O info.json https://extensions.gnome.org/extension-info/?uuid=$uuid&shell_version=$h");
     File info = File("./info.json");
     Map m = jsonDecode(info.readAsStringSync());
-    int vers=m["shell_version_map"][h]["version"];
-    await Shell().run("gnome-extensions install https://extensions.gnome.org${m["download_url"]} --force");
-    String s=(await Shell().run("dconf read /org/gnome/shell/enabled-extensions")).outText;
+    await runInBash("gnome-extensions install https://extensions.gnome.org${m["download_url"]} --force");
+    String s=(await runInBash("dconf read /org/gnome/shell/enabled-extensions"));
     s=s.substring(1,s.length-1).replaceAll("[", "").replaceAll("]", "");
     List extensions = s.split(',');
     for(int i=0;i<extensions.length;i++){
@@ -59,21 +58,21 @@ class ThemeManager {
     }
     extensions=extensions.toSet().toList();
 
-    await Shell().run("dconf write /org/gnome/shell/enabled-extensions \"${extensions.toString()}\"");
+    await runInBash("dconf write /org/gnome/shell/enabled-extensions \"${extensions.toString()}\"");
     info.delete();
-    Shell().run("rm -r extension");
+    runInBash("rm -r extension");
 
     /*
    await Future.delayed(100.milliseconds);
-   await  Shell().run("bash -c 'cd extension && wget https://extensions.gnome.org/extension-data/user-themegnome-shell-extensions.gcampax.github.com.v55.shell-extension.zip';");
-   await  Shell().run("bash -c 'cd extension && unzip user-themegnome-shell-extensions.gcampax.github.com.v55.shell-extension.zip';");
-   await  Shell().run("bash -c 'cd extension && rm user-themegnome-shell-extensions.gcampax.github.com.v55.shell-extension.zip';");
+   await  runInBash("bash -c 'cd extension && wget https://extensions.gnome.org/extension-data/user-themegnome-shell-extensions.gcampax.github.com.v55.shell-extension.zip';");
+   await  runInBash("bash -c 'cd extension && unzip user-themegnome-shell-extensions.gcampax.github.com.v55.shell-extension.zip';");
+   await  runInBash("bash -c 'cd extension && rm user-themegnome-shell-extensions.gcampax.github.com.v55.shell-extension.zip';");
 
-   Shell().run("bash -c 'mkdir -p ${SystemInfo.homeDir}/.local/share/gnome-shell/extensions/$uuid';");
+   runInBash("bash -c 'mkdir -p ${SystemInfo.homeDir}/.local/share/gnome-shell/extensions/$uuid';");
    await Future.delayed(100.milliseconds);
-   Shell().run("bash -c 'cp -r ./extensions/* ${SystemInfo.homeDir}/.local/share/gnome-shell/extensions/$uuid';");
+   runInBash("bash -c 'cp -r ./extensions/* ${SystemInfo.homeDir}/.local/share/gnome-shell/extensions/$uuid';");
    await Future.delayed(100.milliseconds);
-   Shell().run("bash -c 'gnome-extensions enable $uuid';");
+   runInBash("bash -c 'gnome-extensions enable $uuid';");
    await Future.delayed(100.milliseconds);
    */*/
   }
